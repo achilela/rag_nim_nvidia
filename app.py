@@ -2,7 +2,7 @@ import streamlit as st
 from io import StringIO
 from PyPDF2 import PdfReader
 from bs4 import BeautifulSoup
-from openai import OpenAI
+import openai
 
 # Function to get embeddings from NVIDIA NIM using OpenAI client
 def get_embeddings(client, input_text, model):
@@ -12,7 +12,7 @@ def get_embeddings(client, input_text, model):
         encoding_format="float",
         extra_body={"input_type": "query", "truncate": "NONE"}
     )
-    return response.data[0].embedding
+    return response['data'][0]['embedding']
 
 # Function to extract text from PDF
 def extract_text_from_pdf(uploaded_pdf):
@@ -45,7 +45,7 @@ input_text = st.text_area("Enter input text")
 
 if st.button("Get Embeddings"):
     if api_key and input_text:
-        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        client = openai.OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
         embeddings = get_embeddings(client, input_text, selected_model)
         st.write("Embeddings:", embeddings)
     else:
