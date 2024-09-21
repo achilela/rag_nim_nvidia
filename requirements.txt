@@ -1,10 +1,7 @@
 streamlit
-langchain
-nvidia-cuda-runtime-cu11
-langchain-nvidia-ai-endpoints
-python-dotenv
+openai
 PyPDF2
 openpyxl
 pandas
-faiss-cpu
-openai
+numpy
+scikit-learn
