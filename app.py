@@ -5,7 +5,7 @@ import PyPDF2
 import pandas as pd
 
 # Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀")#, layout="wide")
 
 # Custom CSS for modern layout
 st.markdown("""
