@@ -1,6 +1,14 @@
 import streamlit as st
+
+
+
+
 from chat_interface import ChatInterface
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.chains import ConversationalRetrievalChain
+from langchain.llms import OpenAI
 import os
 import PyPDF2
 import pandas as pd
@@ -35,18 +43,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "embeddings" not in st.session_state:
-    st.session_state.embeddings = []
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
 
 # Initialize NVIDIA Embeddings client
 @st.cache_resource
 def get_embeddings_client():
-    api_key = os.getenv("NVIDIA_API_KEY", "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")
+    api_key = os.getenv("NVIDIA_API_KEY", "")
     return NVIDIAEmbeddings(
         model="nvidia/nv-embedqa-mistral-7b-v2",
         api_key=api_key,
@@ -71,41 +77,52 @@ def process_file(file):
 def main():
     st.markdown("# Methods Engineer B17 🚀")
 
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        # Display chat messages
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(f"🚀 {message['content']}")
-
-        # Chat input
-        user_input = st.chat_input("🚀 Type your message here...")
-        if user_input:
-            chat_interface.add_user_message(user_input)
-            with st.chat_message("user"):
-                st.markdown(f"🚀 {user_input}")
-
-            with st.chat_message("assistant"):
-                response_placeholder = st.empty()
-                full_response = chat_interface.get_ai_response(response_placeholder)
-                response_placeholder.markdown(f"🚀 {full_response}")
-
-    with col2:
-        st.markdown("## Options 🚀")
+    # File uploader
+    uploaded_file = st.file_uploader("🚀 Upload a file", type=["txt", "pdf", "xlsx", "xls"])
+    if uploaded_file:
+        file_content = process_file(uploaded_file)
+        st.success(f"🚀 File '{uploaded_file.name}' uploaded and processed successfully!")
         
-        # File uploader
-        uploaded_file = st.file_uploader("🚀 Upload a file", type=["txt", "pdf", "xlsx", "xls"])
-        if uploaded_file:
-            file_content = process_file(uploaded_file)
-            st.success(f"🚀 File '{uploaded_file.name}' uploaded and processed successfully!")
-            embedding = chat_interface.get_file_embedding(file_content)
-            st.session_state.embeddings.append({"name": uploaded_file.name, "embedding": embedding})
+        # Create vector store
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        texts = text_splitter.split_text(file_content)
+        st.session_state.vector_store = FAISS.from_texts(texts, client)
+        
+        # Create retrieval chain
+        llm = OpenAI(temperature=0)
+        st.session_state.retrieval_chain = ConversationalRetrievalChain.from_llm(
+            llm, st.session_state.vector_store.as_retriever(), return_source_documents=True
+        )
 
-        # Sidebar options
+    # Display chat messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(f"🚀 {message['content']}")
+
+    # Chat input
+    user_input = st.chat_input("🚀 Type your message here...")
+    if user_input:
+        chat_interface.add_user_message(user_input)
+        with st.chat_message("user"):
+            st.markdown(f"🚀 {user_input}")
+
+        with st.chat_message("assistant"):
+            response_placeholder = st.empty()
+            if st.session_state.vector_store:
+                chat_history = [(msg["content"], "") for msg in st.session_state.messages if msg["role"] == "user"]
+                response = st.session_state.retrieval_chain({"question": user_input, "chat_history": chat_history})
+                full_response = response['answer']
+            else:
+                full_response = chat_interface.get_ai_response(response_placeholder)
+            response_placeholder.markdown(f"🚀 {full_response}")
+            chat_interface.add_ai_message(full_response)
+
+    # Sidebar options
+    with st.sidebar:
+        st.markdown("## Options 🚀")
         if st.button("🚀 Clear Chat History"):
             st.session_state.messages = []
-            st.session_state.embeddings = []
+            st.session_state.vector_store = None
             st.experimental_rerun()
 
         if st.button("🚀 Save Chat History"):
