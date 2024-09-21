@@ -46,7 +46,7 @@ if "embeddings" not in st.session_state:
 # Initialize NVIDIA Embeddings client
 @st.cache_resource
 def get_embeddings_client():
-    api_key = os.getenv("NVIDIA_API_KEY", "")
+    api_key = os.getenv("NVIDIA_API_KEY", "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")
     return NVIDIAEmbeddings(
         model="nvidia/nv-embedqa-mistral-7b-v2",
         api_key=api_key,
