@@ -1,0 +1,8 @@
+streamlit
+langchain
+nvidia-cuda-runtime-cu11
+langchain-nvidia-ai-endpoints
+python-dotenv
+PyPDF2
+openpyxl
+pandas
