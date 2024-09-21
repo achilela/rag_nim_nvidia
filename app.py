@@ -5,7 +5,7 @@ import PyPDF2
 import pandas as pd
 
 # Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀")#, layout="wide")
+st.set_page_config(page_title="🚀 Methods Engineer B17 🚀", page_icon="🚀")#, layout="wide")
 
 # Custom CSS for modern layout
 st.markdown("""
@@ -49,7 +49,7 @@ if "messages" not in st.session_state:
 @st.cache_resource
 def get_openai_client():
     return OpenAI(
-        api_key=os.getenv("NVIDIA_API_KEY", "nvapi-xHX1"),
+        api_key=os.getenv("NVIDIA_API_KEY", "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"),
         base_url="https://integrate.api.nvidia.com/v1"
     )
 
@@ -80,7 +80,7 @@ def stream_response(prompt):
     return full_response
 
 def main():
-    st.title("Methods Engineer B17 🚀")
+    st.title("🚀 Methods Engineer B17 🚀")
 
     # Sidebar
     with st.sidebar:
