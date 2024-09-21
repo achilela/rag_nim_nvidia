@@ -6,3 +6,5 @@ python-dotenv
 PyPDF2
 openpyxl
 pandas
+faiss-cpu
+openai
