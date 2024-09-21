@@ -1,21 +1,18 @@
 import streamlit as st
 
-
-
+# Streamlit page configuration
+st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
 
 from chat_interface import ChatInterface
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms import OpenAI
 import os
 import PyPDF2
 import pandas as pd
 import io
-
-# Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
 
 # Custom CSS for modern layout and reduced font size
 st.markdown("""
@@ -52,7 +49,7 @@ if "vector_store" not in st.session_state:
 # Initialize NVIDIA Embeddings client
 @st.cache_resource
 def get_embeddings_client():
-    api_key = os.getenv("NVIDIA_API_KEY", "")
+    api_key = os.getenv("NVIDIA_API_KEY", "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")
     return NVIDIAEmbeddings(
         model="nvidia/nv-embedqa-mistral-7b-v2",
         api_key=api_key,
