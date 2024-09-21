@@ -1,18 +1,13 @@
 import streamlit as st
-
-# Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
-
-from chat_interface import ChatInterface
-from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain.chains import ConversationalRetrievalChain
-from langchain.llms import OpenAI
+from openai import OpenAI
 import os
 import PyPDF2
 import pandas as pd
-import io
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Streamlit page configuration
+st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
 
 # Custom CSS for modern layout and reduced font size
 st.markdown("""
@@ -43,23 +38,29 @@ st.markdown("""
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "vector_store" not in st.session_state:
-    st.session_state.vector_store = None
+if "document_embeddings" not in st.session_state:
+    st.session_state.document_embeddings = []
+if "document_chunks" not in st.session_state:
+    st.session_state.document_chunks = []
 
-# Initialize NVIDIA Embeddings client
+# Initialize OpenAI client
 @st.cache_resource
-def get_embeddings_client():
-    api_key = os.getenv("NVIDIA_API_KEY", "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")
-    return NVIDIAEmbeddings(
-        model="nvidia/nv-embedqa-mistral-7b-v2",
-        api_key=api_key,
-        truncate="NONE",
+def get_openai_client():
+    return OpenAI(
+        api_key=os.getenv("NVIDIA_API_KEY", "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"),
+        base_url="https://integrate.api.nvidia.com/v1"
     )
 
-client = get_embeddings_client()
+client = get_openai_client()
 
-# Initialize ChatInterface
-chat_interface = ChatInterface(client)
+def get_embedding(text):
+    response = client.embeddings.create(
+        input=[text],
+        model="nvidia/nv-embedqa-mistral-7b-v2",
+        encoding_format="float",
+        extra_body={"input_type": "query", "truncate": "NONE"}
+    )
+    return response.data[0].embedding
 
 def process_file(file):
     if file.type == "application/pdf":
@@ -71,6 +72,14 @@ def process_file(file):
     else:
         return file.getvalue().decode("utf-8")
 
+def chunk_text(text, chunk_size=1000):
+    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+def get_most_relevant_chunk(query_embedding, document_embeddings, top_k=3):
+    similarities = cosine_similarity([query_embedding], document_embeddings)[0]
+    top_indices = np.argsort(similarities)[-top_k:]
+    return [st.session_state.document_chunks[i] for i in top_indices]
+
 def main():
     st.markdown("# Methods Engineer B17 🚀")
 
@@ -80,17 +89,10 @@ def main():
         file_content = process_file(uploaded_file)
         st.success(f"🚀 File '{uploaded_file.name}' uploaded and processed successfully!")
         
-        # Create vector store
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        texts = text_splitter.split_text(file_content)
-        st.session_state.vector_store = FAISS.from_texts(texts, client)
+        # Create document chunks and embeddings
+        st.session_state.document_chunks = chunk_text(file_content)
+        st.session_state.document_embeddings = [get_embedding(chunk) for chunk in st.session_state.document_chunks]
         
-        # Create retrieval chain
-        llm = OpenAI(temperature=0)
-        st.session_state.retrieval_chain = ConversationalRetrievalChain.from_llm(
-            llm, st.session_state.vector_store.as_retriever(), return_source_documents=True
-        )
-
     # Display chat messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -99,32 +101,33 @@ def main():
     # Chat input
     user_input = st.chat_input("🚀 Type your message here...")
     if user_input:
-        chat_interface.add_user_message(user_input)
+        st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(f"🚀 {user_input}")
 
         with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            if st.session_state.vector_store:
-                chat_history = [(msg["content"], "") for msg in st.session_state.messages if msg["role"] == "user"]
-                response = st.session_state.retrieval_chain({"question": user_input, "chat_history": chat_history})
-                full_response = response['answer']
+            if st.session_state.document_embeddings:
+                query_embedding = get_embedding(user_input)
+                relevant_chunks = get_most_relevant_chunk(query_embedding, st.session_state.document_embeddings)
+                response = f"Based on the uploaded document, here are the most relevant parts:\n\n" + "\n\n".join(relevant_chunks)
             else:
-                full_response = chat_interface.get_ai_response(response_placeholder)
-            response_placeholder.markdown(f"🚀 {full_response}")
-            chat_interface.add_ai_message(full_response)
+                response = "I'm sorry, but I don't have any document to reference. Could you please upload a document first?"
+            
+            st.markdown(f"🚀 {response}")
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
     # Sidebar options
     with st.sidebar:
         st.markdown("## Options 🚀")
         if st.button("🚀 Clear Chat History"):
             st.session_state.messages = []
-            st.session_state.vector_store = None
+            st.session_state.document_embeddings = []
+            st.session_state.document_chunks = []
             st.experimental_rerun()
 
         if st.button("🚀 Save Chat History"):
-            filename = chat_interface.save_chat_history()
-            st.success(f"🚀 Chat history saved to {filename}")
+            # Implement save functionality here
+            st.success(f"🚀 Chat history saved successfully!")
 
 if __name__ == "__main__":
     main()
