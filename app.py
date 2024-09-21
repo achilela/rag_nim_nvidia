@@ -1,17 +1,19 @@
 import streamlit as st
-from openai import OpenAI
+from openai import AsyncOpenAI
 import os
 import PyPDF2
 import pandas as pd
+import asyncio
+import time
 
 # Streamlit page configuration
-st.set_page_config(page_title="🚀 Methods Engineer B17 🚀", page_icon="🚀")#, layout="wide")
+st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀")
 
 # Custom CSS for modern layout
 st.markdown("""
 <style>
     .stApp {
-        max-width: 1200px;
+        max-width: 1000px;
         margin: 0 auto;
         font-family: 'Roboto', sans-serif;
     }
@@ -45,11 +47,11 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Initialize OpenAI client
+# Initialize AsyncOpenAI client
 @st.cache_resource
 def get_openai_client():
-    return OpenAI(
-        api_key=os.getenv("NVIDIA_API_KEY", "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"),
+    return AsyncOpenAI(
+        api_key=os.getenv("NVIDIA_API_KEY", "nvapi-xHX1"),
         base_url="https://integrate.api.nvidia.com/v1"
     )
 
@@ -65,22 +67,22 @@ def process_file(file):
     else:
         return file.getvalue().decode("utf-8")
 
-def stream_response(prompt):
-    full_response = ""
-    message_placeholder = st.empty()
-    for response in client.chat.completions.create(
+async def stream_response(prompt):
+    response = await client.chat.completions.create(
         model="nvidia/text-generation-mistral-7b",
         messages=[{"role": "user", "content": prompt}],
         stream=True
-    ):
-        if response.choices[0].delta.content is not None:
-            full_response += response.choices[0].delta.content
-            message_placeholder.markdown(full_response + "▌")
-    message_placeholder.markdown(full_response)
-    return full_response
+    )
+    
+    full_response = ""
+    async for chunk in response:
+        if chunk.choices[0].delta.content is not None:
+            full_response += chunk.choices[0].delta.content
+            yield full_response
+        await asyncio.sleep(0.01)
 
-def main():
-    st.title("🚀 Methods Engineer B17 🚀")
+async def main():
+    st.title("Methods Engineer B17 🚀")
 
     # Sidebar
     with st.sidebar:
@@ -106,13 +108,16 @@ def main():
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
+            message_placeholder = st.empty()
             if 'file_content' in st.session_state:
                 full_prompt = f"Based on the following document: {st.session_state.file_content[:1000]}... Please answer: {prompt}"
             else:
                 full_prompt = prompt
             
-            response = stream_response(full_prompt)
+            async for response in stream_response(full_prompt):
+                message_placeholder.markdown(response + "▌")
+            message_placeholder.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
