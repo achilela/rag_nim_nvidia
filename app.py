@@ -1,10 +1,9 @@
 import streamlit as st
-from openai import AsyncOpenAI
 import os
 import PyPDF2
 import pandas as pd
 import asyncio
-import time
+from chat_interface import ChatInterface
 
 # Streamlit page configuration
 st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀")
@@ -47,15 +46,15 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Initialize AsyncOpenAI client
+# Initialize ChatInterface
 @st.cache_resource
-def get_openai_client():
-    return AsyncOpenAI(
+def get_chat_interface():
+    return ChatInterface(
         api_key=os.getenv("NVIDIA_API_KEY", "nvapi-xHX1"),
         base_url="https://integrate.api.nvidia.com/v1"
     )
 
-client = get_openai_client()
+chat_interface = get_chat_interface()
 
 def process_file(file):
     if file.type == "application/pdf":
@@ -66,20 +65,6 @@ def process_file(file):
         return df.to_string()
     else:
         return file.getvalue().decode("utf-8")
-
-async def stream_response(prompt):
-    response = await client.chat.completions.create(
-        model="nvidia/text-generation-mistral-7b",
-        messages=[{"role": "user", "content": prompt}],
-        stream=True
-    )
-    
-    full_response = ""
-    async for chunk in response:
-        if chunk.choices[0].delta.content is not None:
-            full_response += chunk.choices[0].delta.content
-            yield full_response
-        await asyncio.sleep(0.01)
 
 async def main():
     st.title("Methods Engineer B17 🚀")
@@ -92,10 +77,17 @@ async def main():
             file_content = process_file(uploaded_file)
             st.success(f"File '{uploaded_file.name}' processed successfully!")
             st.session_state.file_content = file_content
+            file_embedding = await chat_interface.get_file_embedding(file_content)
+            st.session_state.file_embedding = file_embedding
 
         if st.button("Clear Chat"):
             st.session_state.messages = []
             st.session_state.pop('file_content', None)
+            st.session_state.pop('file_embedding', None)
+
+        if st.button("Save Chat History"):
+            filename = chat_interface.save_chat_history()
+            st.success(f"Chat history saved to {filename}")
 
     # Main chat interface
     for message in st.session_state.messages:
@@ -103,7 +95,7 @@ async def main():
             st.markdown(message["content"])
 
     if prompt := st.chat_input("What's your question?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        chat_interface.add_user_message(prompt)
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -114,10 +106,7 @@ async def main():
             else:
                 full_prompt = prompt
             
-            async for response in stream_response(full_prompt):
-                message_placeholder.markdown(response + "▌")
-            message_placeholder.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            response = await chat_interface.get_ai_response(message_placeholder, full_prompt)
 
 if __name__ == "__main__":
     asyncio.run(main())
