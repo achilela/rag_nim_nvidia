@@ -6,6 +6,9 @@ import PyPDF2
 import pandas as pd
 import io
 
+# Streamlit page configuration
+st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
+
 # Custom CSS for modern layout and reduced font size
 st.markdown("""
 <style>
@@ -32,8 +35,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀", layout="wide")
+
 
 # Initialize session state
 if "messages" not in st.session_state:
