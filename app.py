@@ -50,7 +50,7 @@ if "messages" not in st.session_state:
 @st.cache_resource
 def get_chat_interface():
     return ChatInterface(
-        api_key=os.getenv("NVIDIA_API_KEY", "nvapi-xHX1"),
+        api_key=os.getenv("NVIDIA_API_KEY", "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"),
         base_url="https://integrate.api.nvidia.com/v1"
     )
 
