@@ -1,57 +1,18 @@
-import streamlit as st
 import os
+import asyncio
+import streamlit as st
 import PyPDF2
 import pandas as pd
-import asyncio
-from chat_interface import ChatInterface
+from openai import OpenAI
 
-# Streamlit page configuration
-st.set_page_config(page_title="Methods Engineer B17 🚀", page_icon="🚀")
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()  # This will load the .env file where NVIDIA_API_KEY is expected to be defined
 
-# Custom CSS for modern layout
-st.markdown("""
-<style>
-    .stApp {
-        max-width: 1000px;
-        margin: 0 auto;
-        font-family: 'Roboto', sans-serif;
-    }
-    .stSidebar {
-        background-color: #f0f2f6;
-        padding: 2rem 1rem;
-    }
-    .stSidebar .stButton > button {
-        width: 100%;
-        margin-bottom: 1rem;
-    }
-    .chat-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-    }
-    .user-message {
-        background-color: #e6f3ff;
-        align-items: flex-end;
-    }
-    .assistant-message {
-        background-color: #f0f0f0;
-        align-items: flex-start;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Initialize ChatInterface
-@st.cache_resource
 def get_chat_interface():
-    return ChatInterface(
-        api_key=os.getenv("NVIDIA_API_KEY", "nvapi-"),
-        base_url="https://integrate.api.nvidia.com/v1"
+    return OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.getenv("NVIDIA_API_KEY", "nvapi-")
     )
 
 chat_interface = get_chat_interface()
@@ -77,8 +38,9 @@ async def main():
             file_content = process_file(uploaded_file)
             st.success(f"File '{uploaded_file.name}' processed successfully!")
             st.session_state.file_content = file_content
-            file_embedding = await chat_interface.get_file_embedding(file_content)
-            st.session_state.file_embedding = file_embedding
+            with st.spinner('Creating file embedding...'):
+                file_embedding = await chat_interface.embeddings.create(input=file_content)
+            st.session_state.file_embedding = file_embedding.data[0].embedding
 
         if st.button("Clear Chat"):
             st.session_state.messages = []
@@ -86,27 +48,45 @@ async def main():
             st.session_state.pop('file_embedding', None)
 
         if st.button("Save Chat History"):
-            filename = chat_interface.save_chat_history()
-            st.success(f"Chat history saved to {filename}")
+            # Note: Saving chat history might require additional logic or external storage
+            st.success("Chat history saved functionality not implemented yet.")
 
     # Main chat interface
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
     if prompt := st.chat_input("What's your question?"):
-        chat_interface.add_user_message(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
+            full_prompt = prompt
             if 'file_content' in st.session_state:
                 full_prompt = f"Based on the following document: {st.session_state.file_content[:1000]}... Please answer: {prompt}"
-            else:
-                full_prompt = prompt
             
-            response = await chat_interface.get_ai_response(message_placeholder, full_prompt)
+            completion = await chat_interface.chat.completions.create(
+                model="meta/llama-3.1-8b-instruct",
+                messages=[{"role": "user", "content": full_prompt}],
+                temperature=0.2,
+                top_p=0.7,
+                max_tokens=1024,
+                stream=True
+            )
+            
+            full_response = ""
+            for chunk in completion:
+                if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(full_response)
+        
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
 
 if __name__ == "__main__":
     asyncio.run(main())
