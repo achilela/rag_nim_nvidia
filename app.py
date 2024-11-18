@@ -28,7 +28,7 @@ def process_file(file):
         return file.getvalue().decode("utf-8")
 
 async def main():
-    st.title("Methods Engineer B17 🚀")
+    st.title("🚀 Twin - Methods Engineer 🚀")
 
     # Sidebar
     with st.sidebar:
