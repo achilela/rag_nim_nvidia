@@ -39,7 +39,7 @@ async def main():
             st.success(f"File '{uploaded_file.name}' processed successfully!")
             st.session_state.file_content = file_content
             with st.spinner('Creating file embedding...'):
-                file_embedding = await chat_interface.embeddings.create(input=file_content)
+                file_embedding = chat_interface.embeddings.create(input=file_content)
             st.session_state.file_embedding = file_embedding.data[0].embedding
 
         if st.button("Clear Chat"):
@@ -70,7 +70,7 @@ async def main():
             if 'file_content' in st.session_state:
                 full_prompt = f"Based on the following document: {st.session_state.file_content[:1000]}... Please answer: {prompt}"
             
-            completion = await chat_interface.chat.completions.create(
+            completion = chat_interface.chat.completions.create(
                 model="meta/llama-3.1-8b-instruct",
                 messages=[{"role": "user", "content": full_prompt}],
                 temperature=0.2,
