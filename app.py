@@ -9,23 +9,6 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from io import BytesIO
 from PIL import Image
-import re
-
-def clean_response_text(text):
-    """Clean and format the response text for better readability"""
-    # Remove escape sequences
-    text = text.replace('\\n', '\n').replace('\\r', '').replace('\\t', ' ')
-    
-    # Remove multiple spaces
-    text = re.sub(r'\s+', ' ', text)
-    
-    # Clean up newlines
-    text = '\n'.join(line.strip() for line in text.split('\n') if line.strip())
-    
-    # Add proper spacing after periods if missing
-    text = re.sub(r'\.(?=[A-Z])', '. ', text)
-    
-    return text
 
 # Load environment variables
 load_dotenv()
@@ -177,9 +160,6 @@ def process_vision_chat(nvidia_interface, prompt):
                 data = line.decode("utf-8")
                 if "content" in data:
                     content = data.split('"content":"')[1].split('"')[0]
-                    # Clean up the unwanted patterns while maintaining streaming
-                    content = content.replace('\\n\\n', ' ').replace('\\n', ' ')
-                    content = content.replace('\\n*', '').replace('*', '')
                     full_response += content
                     message_placeholder.markdown(full_response + "▌")
             except Exception as e:
