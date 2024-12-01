@@ -176,22 +176,16 @@ def process_vision_chat(nvidia_interface, prompt):
             try:
                 data = line.decode("utf-8")
                 if "content" in data:
-                    # Extract content and clean up the response
                     content = data.split('"content":"')[1].split('"')[0]
-                    # Replace escaped newlines with actual newlines
-                    content = content.replace('\\n', '\n')
-                    # Remove other common escape sequences
-                    content = content.replace('\\r', '')
-                    content = content.replace('\\t', ' ')
-                    # Replace multiple newlines with single newlines
-                    content = '\n'.join(line.strip() for line in content.split('\n') if line.strip())
-                    full_response = content
-                    # Format the response for better readability
-                    formatted_response = full_response.replace('*', '**')  # Make important points bold
-                    message_placeholder.markdown(formatted_response)
+                    # Clean up the unwanted patterns while maintaining streaming
+                    content = content.replace('\\n\\n', ' ').replace('\\n', ' ')
+                    content = content.replace('\\n*', '').replace('*', '')
+                    full_response += content
+                    message_placeholder.markdown(full_response + "▌")
             except Exception as e:
                 continue
     
+    message_placeholder.markdown(full_response)
     return full_response
 
 async def main():
