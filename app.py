@@ -9,6 +9,23 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from io import BytesIO
 from PIL import Image
+import re
+
+def clean_response_text(text):
+    """Clean and format the response text for better readability"""
+    # Remove escape sequences
+    text = text.replace('\\n', '\n').replace('\\r', '').replace('\\t', ' ')
+    
+    # Remove multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Clean up newlines
+    text = '\n'.join(line.strip() for line in text.split('\n') if line.strip())
+    
+    # Add proper spacing after periods if missing
+    text = re.sub(r'\.(?=[A-Z])', '. ', text)
+    
+    return text
 
 # Load environment variables
 load_dotenv()
@@ -159,13 +176,22 @@ def process_vision_chat(nvidia_interface, prompt):
             try:
                 data = line.decode("utf-8")
                 if "content" in data:
+                    # Extract content and clean up the response
                     content = data.split('"content":"')[1].split('"')[0]
-                    full_response += content
-                    message_placeholder.markdown(full_response + "▌")
+                    # Replace escaped newlines with actual newlines
+                    content = content.replace('\\n', '\n')
+                    # Remove other common escape sequences
+                    content = content.replace('\\r', '')
+                    content = content.replace('\\t', ' ')
+                    # Replace multiple newlines with single newlines
+                    content = '\n'.join(line.strip() for line in content.split('\n') if line.strip())
+                    full_response = content
+                    # Format the response for better readability
+                    formatted_response = full_response.replace('*', '**')  # Make important points bold
+                    message_placeholder.markdown(formatted_response)
             except Exception as e:
                 continue
     
-    message_placeholder.markdown(full_response)
     return full_response
 
 async def main():
