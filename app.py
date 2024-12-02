@@ -127,7 +127,7 @@ def create_sidebar():
             
             if uploaded_image:
                 image = Image.open(uploaded_image)
-                st.image(image, caption="Uploaded Image", use_column_width=True)
+                st.image(image, caption="Uploaded Image", use_container_width=True)
                 st.session_state.image_data = uploaded_image.getvalue()
         
         # Common controls
@@ -178,8 +178,10 @@ def process_vision_chat(nvidia_interface, prompt):
                 if "content" in data:
                     content = data.split('"content":"')[1].split('"')[0]
                     # Clean up the unwanted patterns while maintaining streaming
-                    content = content.replace('\\n\\n', ' ').replace('\\n', ' ')
+                    content = content.replace('\\n\\n', ' ').replace('\\n', ' ').replace('\\', '')
+
                     content = content.replace('\\n*', '').replace('*', '')
+                   
                     full_response += content
                     message_placeholder.markdown(full_response + "▌")
             except Exception as e:
